@@ -30,8 +30,8 @@ app.get('/api/accounts', async (_req: Request, res: Response) => {
     const accounts = await getUniqueAccounts();
     res.json({ accounts });
   } catch (error) {
-    logger.error({ error }, 'Error fetching accounts');
-    res.status(500).json({ error: 'Failed to fetch accounts' });
+    logger.error({ error }, 'Error fetching accounts - returning empty list');
+    res.json({ accounts: [] });
   }
 });
 
@@ -50,8 +50,14 @@ app.get('/api/emails', async (req: Request, res: Response) => {
       totalPages: Math.ceil(result.total / pageSize)
     });
   } catch (error) {
-    logger.error({ error }, 'Error fetching emails');
-    res.status(500).json({ error: 'Failed to fetch emails' });
+    logger.error({ error }, 'Error fetching emails - returning empty list');
+    res.json({
+      emails: [],
+      total: 0,
+      page: 1,
+      pageSize: parseInt(req.query.pageSize as string) || 20,
+      totalPages: 0
+    });
   }
 });
 
@@ -78,8 +84,15 @@ app.get('/api/emails/search', async (req: Request, res: Response) => {
       totalPages: Math.ceil(result.total / size)
     });
   } catch (error) {
-    logger.error({ error }, 'Error searching emails');
-    res.status(500).json({ error: 'Failed to search emails' });
+    logger.error({ error }, 'Error searching emails - returning empty list');
+    const { page = '1', pageSize = '20' } = req.query;
+    res.json({
+      emails: [],
+      total: 0,
+      page: parseInt(page as string) || 1,
+      pageSize: parseInt(pageSize as string) || 20,
+      totalPages: 0
+    });
   }
 });
 
