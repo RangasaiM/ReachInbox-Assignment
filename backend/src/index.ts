@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import pino from 'pino';
 import { startImapSync } from './imap/imapClient';
+import { ensureIndex } from './elastic/elasticClient';
 
 dotenv.config();
 
@@ -25,6 +26,13 @@ app.get('/health', (_req: Request, res: Response) => {
 app.listen(PORT, async () => {
   logger.info(`Server running on port ${PORT}`);
   console.log(`Server running`);
+  
+  try {
+    await ensureIndex();
+  } catch (error) {
+    logger.error({ error }, 'Failed to ensure Elasticsearch index');
+    console.error('Failed to ensure Elasticsearch index:', error);
+  }
   
   try {
     await startImapSync();

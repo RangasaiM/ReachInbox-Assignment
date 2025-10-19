@@ -1,6 +1,7 @@
 import Imap from 'node-imap';
 import { simpleParser, ParsedMail } from 'mailparser';
 import pino from 'pino';
+import { indexEmail, EmailDocument } from '../elastic/elasticClient';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info'
@@ -59,14 +60,14 @@ function fetchAndParseEmail(imap: Imap, uid: number, accountEmail: string): Prom
 
     fetch.on('message', (msg) => {
       msg.on('body', (stream) => {
-        simpleParser(stream as any, (err, parsed) => {
+        simpleParser(stream as any, async (err, parsed) => {
           if (err) {
             logger.error({ error: err, accountEmail }, 'Error parsing email');
             reject(err);
             return;
           }
           
-          logEmailDetails(parsed, accountEmail);
+          await logAndIndexEmail(parsed, accountEmail);
           resolve();
         });
       });
@@ -83,7 +84,7 @@ function fetchAndParseEmail(imap: Imap, uid: number, accountEmail: string): Prom
   });
 }
 
-function logEmailDetails(email: ParsedMail, accountEmail: string): void {
+async function logAndIndexEmail(email: ParsedMail, accountEmail: string): Promise<void> {
   const from = email.from?.text || 'Unknown';
   const subject = email.subject || '(no subject)';
   const date = email.date || new Date();
@@ -103,6 +104,22 @@ function logEmailDetails(email: ParsedMail, accountEmail: string): void {
   console.log(`Date: ${date.toISOString()}`);
   console.log(`Body preview: ${textBody.substring(0, 150)}...`);
   console.log('=====================================\n');
+
+  try {
+    const emailDocument: EmailDocument = {
+      subject: subject,
+      body: textBody,
+      accountId: accountEmail,
+      folder: 'INBOX',
+      date: date,
+      indexedAt: new Date()
+    };
+
+    await indexEmail(emailDocument);
+    logger.info({ accountEmail, subject }, 'Email indexed in Elasticsearch');
+  } catch (error) {
+    logger.error({ error, accountEmail, subject }, 'Failed to index email in Elasticsearch');
+  }
 }
 
 async function fetchRecentEmails(imap: Imap, accountEmail: string): Promise<void> {
