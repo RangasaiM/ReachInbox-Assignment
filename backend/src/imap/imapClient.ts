@@ -1,7 +1,8 @@
 import Imap from 'node-imap';
 import { simpleParser, ParsedMail } from 'mailparser';
 import pino from 'pino';
-import { indexEmail, EmailDocument } from '../elastic/elasticClient';
+import { indexEmail, EmailDocument, updateEmailCategory } from '../elastic/elasticClient';
+import { categorizeEmailWithRetry } from '../ai/emailCategorizer';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info'
@@ -115,8 +116,23 @@ async function logAndIndexEmail(email: ParsedMail, accountEmail: string): Promis
       indexedAt: new Date()
     };
 
-    await indexEmail(emailDocument);
-    logger.info({ accountEmail, subject }, 'Email indexed in Elasticsearch');
+    const documentId = await indexEmail(emailDocument);
+    logger.info({ accountEmail, subject, documentId }, 'Email indexed in Elasticsearch');
+
+    if (process.env.GEMINI_API_KEY) {
+      const category = await categorizeEmailWithRetry(subject, textBody);
+      
+      if (category) {
+        await updateEmailCategory(documentId, category);
+        console.log(`🏷️  Email categorized as: ${category}`);
+        logger.info({ accountEmail, subject, category, documentId }, 'Email categorized and updated');
+      } else {
+        logger.warn({ accountEmail, subject, documentId }, 'Failed to categorize email after retries');
+        console.log(`⚠️  Failed to categorize email: ${subject}`);
+      }
+    } else {
+      logger.info({ accountEmail, subject }, 'GEMINI_API_KEY not set, skipping AI categorization');
+    }
   } catch (error) {
     logger.error({ error, accountEmail, subject }, 'Failed to index email in Elasticsearch');
   }

@@ -81,16 +81,34 @@ export interface EmailDocument {
   indexedAt: Date;
 }
 
-export async function indexEmail(email: EmailDocument): Promise<void> {
+export async function indexEmail(email: EmailDocument): Promise<string> {
   try {
-    await esClient.index({
+    const response = await esClient.index({
       index: INDEX_NAME,
       document: email
     });
 
-    logger.info({ accountId: email.accountId, subject: email.subject }, 'Email indexed in Elasticsearch');
+    logger.info({ accountId: email.accountId, subject: email.subject, documentId: response._id }, 'Email indexed in Elasticsearch');
+    return response._id;
   } catch (error) {
     logger.error({ error, email }, 'Error indexing email in Elasticsearch');
+    throw error;
+  }
+}
+
+export async function updateEmailCategory(documentId: string, category: string): Promise<void> {
+  try {
+    await esClient.update({
+      index: INDEX_NAME,
+      id: documentId,
+      doc: {
+        aiCategory: category
+      }
+    });
+
+    logger.info({ documentId, category }, 'Email category updated in Elasticsearch');
+  } catch (error) {
+    logger.error({ error, documentId, category }, 'Error updating email category in Elasticsearch');
     throw error;
   }
 }
