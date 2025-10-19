@@ -6,15 +6,13 @@ const logger = pino({
 });
 
 const ELASTICSEARCH_HOST = process.env.ELASTICSEARCH_HOST || 'http://localhost:9200';
-const ELASTIC_USERNAME = process.env.ELASTIC_USERNAME;
-const ELASTIC_PASSWORD = process.env.ELASTIC_PASSWORD;
+const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
 
 export const esClient = new Client({
   node: ELASTICSEARCH_HOST,
-  auth: ELASTIC_USERNAME && ELASTIC_PASSWORD
+  auth: ELASTIC_API_KEY
     ? {
-        username: ELASTIC_USERNAME,
-        password: ELASTIC_PASSWORD
+        apiKey: ELASTIC_API_KEY
       }
     : undefined
 });
