@@ -1,8 +1,9 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import pino from 'pino';
+import cors from 'cors';
 import { startImapSync } from './imap/imapClient';
-import { ensureIndex } from './elastic/elasticClient';
+import { ensureIndex, searchEmails, getUniqueAccounts } from './elastic/elasticClient';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ const logger = pino({
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(cors());
 app.use(express.json());
 
 app.get('/', (_req: Request, res: Response) => {
@@ -21,6 +23,64 @@ app.get('/', (_req: Request, res: Response) => {
 
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/accounts', async (_req: Request, res: Response) => {
+  try {
+    const accounts = await getUniqueAccounts();
+    res.json({ accounts });
+  } catch (error) {
+    logger.error({ error }, 'Error fetching accounts');
+    res.status(500).json({ error: 'Failed to fetch accounts' });
+  }
+});
+
+app.get('/api/emails', async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+    const from = (page - 1) * pageSize;
+
+    const result = await searchEmails({ from, size: pageSize });
+    res.json({
+      emails: result.emails,
+      total: result.total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(result.total / pageSize)
+    });
+  } catch (error) {
+    logger.error({ error }, 'Error fetching emails');
+    res.status(500).json({ error: 'Failed to fetch emails' });
+  }
+});
+
+app.get('/api/emails/search', async (req: Request, res: Response) => {
+  try {
+    const { q, account, folder, page = '1', pageSize = '20' } = req.query;
+    const pageNum = parseInt(page as string) || 1;
+    const size = parseInt(pageSize as string) || 20;
+    const from = (pageNum - 1) * size;
+
+    const result = await searchEmails({
+      query: q as string,
+      accountId: account as string,
+      folder: folder as string,
+      from,
+      size
+    });
+
+    res.json({
+      emails: result.emails,
+      total: result.total,
+      page: pageNum,
+      pageSize: size,
+      totalPages: Math.ceil(result.total / size)
+    });
+  } catch (error) {
+    logger.error({ error }, 'Error searching emails');
+    res.status(500).json({ error: 'Failed to search emails' });
+  }
 });
 
 app.listen(PORT, async () => {

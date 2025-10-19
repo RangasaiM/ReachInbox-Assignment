@@ -112,3 +112,97 @@ export async function updateEmailCategory(documentId: string, category: string):
     throw error;
   }
 }
+
+export interface SearchEmailsParams {
+  query?: string;
+  accountId?: string;
+  folder?: string;
+  from?: number;
+  size?: number;
+}
+
+export async function searchEmails(params: SearchEmailsParams) {
+  try {
+    const { query, accountId, folder, from = 0, size = 20 } = params;
+
+    const must: any[] = [];
+    const should: any[] = [];
+
+    if (query && query.trim()) {
+      should.push({
+        multi_match: {
+          query: query,
+          fields: ['subject^2', 'body'],
+          type: 'best_fields',
+          fuzziness: 'AUTO'
+        }
+      });
+    }
+
+    if (accountId) {
+      must.push({ term: { accountId } });
+    }
+
+    if (folder) {
+      must.push({ term: { folder } });
+    }
+
+    const body: any = {
+      from,
+      size,
+      sort: [{ date: { order: 'desc' } }],
+      query: {
+        bool: {
+          must: must.length > 0 ? must : undefined,
+          should: should.length > 0 ? should : undefined,
+          minimum_should_match: should.length > 0 ? 1 : undefined
+        }
+      }
+    };
+
+    if (must.length === 0 && should.length === 0) {
+      body.query = { match_all: {} };
+    }
+
+    const response = await esClient.search({
+      index: INDEX_NAME,
+      body
+    });
+
+    return {
+      total: typeof response.hits.total === 'number' ? response.hits.total : response.hits.total?.value || 0,
+      emails: response.hits.hits.map(hit => ({
+        id: hit._id,
+        ...(hit._source as any)
+      }))
+    };
+  } catch (error) {
+    logger.error({ error, params }, 'Error searching emails in Elasticsearch');
+    throw error;
+  }
+}
+
+export async function getUniqueAccounts(): Promise<string[]> {
+  try {
+    const response = await esClient.search({
+      index: INDEX_NAME,
+      body: {
+        size: 0,
+        aggs: {
+          unique_accounts: {
+            terms: {
+              field: 'accountId',
+              size: 100
+            }
+          }
+        }
+      }
+    });
+
+    const buckets = response.aggregations?.unique_accounts as any;
+    return buckets?.buckets?.map((b: any) => b.key) || [];
+  } catch (error) {
+    logger.error({ error }, 'Error getting unique accounts from Elasticsearch');
+    return [];
+  }
+}
