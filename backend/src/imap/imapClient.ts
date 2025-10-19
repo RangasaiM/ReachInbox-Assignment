@@ -3,6 +3,7 @@ import { simpleParser, ParsedMail } from 'mailparser';
 import pino from 'pino';
 import { indexEmail, EmailDocument, updateEmailCategory } from '../elastic/elasticClient';
 import { categorizeEmailWithRetry } from '../ai/emailCategorizer';
+import { triggerInterestedLeadWebhooks } from '../webhooks/notificationService';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info'
@@ -126,6 +127,16 @@ async function logAndIndexEmail(email: ParsedMail, accountEmail: string): Promis
         await updateEmailCategory(documentId, category);
         console.log(`🏷️  Email categorized as: ${category}`);
         logger.info({ accountEmail, subject, category, documentId }, 'Email categorized and updated');
+        
+        await triggerInterestedLeadWebhooks({
+          subject,
+          body: textBody,
+          from,
+          accountId: accountEmail,
+          category,
+          date,
+          documentId
+        });
       } else {
         logger.warn({ accountEmail, subject, documentId }, 'Failed to categorize email after retries');
         console.log(`⚠️  Failed to categorize email: ${subject}`);
