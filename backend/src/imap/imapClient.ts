@@ -18,6 +18,8 @@ interface ImapAccount {
 
 const accounts: ImapAccount[] = [];
 
+const lastSeenUidMap: Record<string, number> = {};
+
 function createImapConnection(email: string, password: string): Imap {
   return new Imap({
     user: email,
@@ -187,51 +189,74 @@ async function fetchRecentEmails(imap: Imap, accountEmail: string): Promise<void
 }
 
 function setupIdleMode(imap: Imap, accountEmail: string, account: ImapAccount): void {
-  imap.on('mail', async (numNewMsgs: number) => {
-    logger.info({ accountEmail, numNewMsgs }, 'New email notification received');
+  imap.on("mail", async (numNewMsgs: number) => {
+    logger.info({ accountEmail, numNewMsgs }, "New email notification received");
     console.log(`\n🔔 ${numNewMsgs} new email(s) detected for ${accountEmail}`);
 
     try {
-      const results = await searchEmails(imap, ['UNSEEN']);
-      
+      const lastSeenUid = lastSeenUidMap[accountEmail] || 1;
+
+      // Fetch only emails newer than last seen UID
+      const results = await searchEmails(imap, [["UID", `${lastSeenUid + 1}:*`]]);
+
       if (results.length === 0) {
-        logger.info({ accountEmail }, 'No unseen messages found');
+        logger.info({ accountEmail }, "No new emails found above last seen UID");
         return;
       }
 
-      logger.info({ accountEmail, count: results.length }, 'Fetching unseen emails');
+      logger.info({ accountEmail, count: results.length }, "Fetching new emails via UID scan");
 
+      let maxUid = lastSeenUid;
       for (const uid of results) {
         try {
           await fetchAndParseEmail(imap, uid, accountEmail);
+          if (uid > maxUid) maxUid = uid;
         } catch (error) {
-          logger.error({ error, uid, accountEmail }, 'Error processing new email');
+          logger.error({ error, uid, accountEmail }, "Error processing new email");
         }
       }
+
+      lastSeenUidMap[accountEmail] = maxUid;
+      logger.info({ accountEmail, lastSeenUid: maxUid }, "Updated last seen UID after fetch");
     } catch (error) {
-      logger.error({ error, accountEmail }, 'Error handling new mail notification');
+      logger.error({ error, accountEmail }, "Error handling new mail notification");
     }
   });
+
+  // Also add a periodic polling fallback every 5 minutes
+  setInterval(async () => {
+    try {
+      const lastSeenUid = lastSeenUidMap[accountEmail] || 1;
+      const results = await searchEmails(imap, [["UID", `${lastSeenUid + 1}:*`]]);
+      if (results.length > 0) {
+        logger.info({ accountEmail, count: results.length }, "Polling detected new emails");
+        let maxUid = lastSeenUid;
+        for (const uid of results) {
+          await fetchAndParseEmail(imap, uid, accountEmail);
+          if (uid > maxUid) maxUid = uid;
+        }
+        lastSeenUidMap[accountEmail] = maxUid;
+      }
+    } catch (err) {
+      logger.error({ err, accountEmail }, "Error during periodic email polling");
+    }
+  }, 5 * 60 * 1000); // every 5 minutes
 
   scheduleReconnect(account);
 }
 
 function scheduleReconnect(account: ImapAccount): void {
-  if (account.reconnectTimer) {
-    clearTimeout(account.reconnectTimer);
-  }
+  if (account.reconnectTimer) clearTimeout(account.reconnectTimer);
 
+  // Refresh the connection every 25 minutes
   account.reconnectTimer = setTimeout(() => {
-    logger.info({ email: account.email }, 'Reconnecting to refresh IDLE connection (29 min timeout)');
-    
-    if (account.connection) {
-      account.connection.end();
-    }
-    
+    logger.info({ email: account.email }, "Refreshing IMAP IDLE connection (25 min timeout)");
+    if (account.connection) account.connection.end();
+
     setTimeout(() => {
       connectToAccount(account);
     }, 2000);
-  }, 29 * 60 * 1000);
+  }, 25 * 60 * 1000);
 }
 
 async function connectToAccount(account: ImapAccount): Promise<void> {
@@ -273,6 +298,11 @@ async function connectToAccount(account: ImapAccount): Promise<void> {
   imap.once('end', () => {
     logger.info({ email }, 'IMAP connection ended');
     console.log(`📴 Connection ended for ${email}`);
+    // Attempt automatic reconnect if the server closes the connection unexpectedly
+    setTimeout(() => {
+      logger.info({ email }, 'Reconnecting after IMAP end event');
+      connectToAccount(account);
+    }, 5000);
   });
 
   imap.connect();

@@ -195,7 +195,10 @@ export async function searchEmails(params: SearchEmailsParams) {
     const body: any = {
       from,
       size,
-      sort: [{ date: { order: "desc" } }],
+      sort: [
+        { date: { order: "desc" } },
+        { indexedAt: { order: "desc" } }
+      ],
       query: {
         bool: {
           must: must.length > 0 ? must : undefined,
