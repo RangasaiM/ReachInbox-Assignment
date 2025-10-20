@@ -5,6 +5,9 @@ import pino from 'pino';
 import cors from 'cors';
 import { startImapSync } from './imap/imapClient';
 import { ensureIndex, searchEmails, getUniqueAccounts } from './elastic/elasticClient';
+import { ensureCollection } from './vector/qdrantClient';
+import { seedDefaultProductData } from './utils/seedProductData';
+import ragRoutes from './routes/ragRoutes';
 
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
@@ -17,6 +20,8 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+app.use('/api', ragRoutes);
 
 app.get('/', (_req: Request, res: Response) => {
   res.json({ message: 'ReachInbox Onebox API' });
@@ -107,6 +112,25 @@ app.listen(PORT, async () => {
   } catch (error) {
     logger.error({ error }, 'Failed to ensure Elasticsearch index');
     console.error('Failed to ensure Elasticsearch index:', error);
+  }
+  
+  if (process.env.QDRANT_URL && process.env.GEMINI_API_KEY) {
+    try {
+      logger.info('Initializing Qdrant vector database...');
+      await ensureCollection();
+      
+      if (process.env.SEED_PRODUCT_DATA === 'true') {
+        logger.info('Seeding default product data...');
+        await seedDefaultProductData();
+      }
+      
+      logger.info('Qdrant vector database ready');
+    } catch (error) {
+      logger.error({ error }, 'Failed to initialize Qdrant - RAG features will be unavailable');
+      console.error('Failed to initialize Qdrant:', error);
+    }
+  } else {
+    logger.warn('QDRANT_URL or GEMINI_API_KEY not set - RAG features will be unavailable');
   }
   
   try {
