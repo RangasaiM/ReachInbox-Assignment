@@ -19,6 +19,7 @@ export interface SearchParams {
   query?: string;
   account?: string;
   folder?: string;
+  category?: string;
   page?: number;
   pageSize?: number;
 }
@@ -29,6 +30,7 @@ export async function searchEmails(params: SearchParams): Promise<EmailSearchRes
   if (params.query) searchParams.append('q', params.query);
   if (params.account) searchParams.append('account', params.account);
   if (params.folder) searchParams.append('folder', params.folder);
+  if (params.category) searchParams.append('category', params.category);
   if (params.page) searchParams.append('page', params.page.toString());
   if (params.pageSize) searchParams.append('pageSize', params.pageSize.toString());
 

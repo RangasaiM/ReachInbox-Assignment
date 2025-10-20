@@ -13,6 +13,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
   const [selectedFolder, setSelectedFolder] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -34,6 +35,7 @@ function App() {
         query: searchQuery || undefined,
         account: selectedAccount || undefined,
         folder: selectedFolder || undefined,
+        category: selectedCategory || undefined,
         page: currentPage,
         pageSize: 20
       });
@@ -53,7 +55,7 @@ function App() {
 
   useEffect(() => {
     loadEmails();
-  }, [currentPage, selectedAccount, selectedFolder, searchQuery]);
+  }, [currentPage, selectedAccount, selectedFolder, selectedCategory, searchQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,12 +159,29 @@ function App() {
               <option value="Spam">Spam</option>
             </select>
 
-            {(searchQuery || selectedAccount || selectedFolder) && (
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="filter-select"
+            >
+              <option value="">All Categories</option>
+              <option value="Interested">Interested</option>
+              <option value="Meeting Booked">Meeting Booked</option>
+              <option value="Not Interested">Not Interested</option>
+              <option value="Spam">Spam</option>
+              <option value="Out of Office">Out of Office</option>
+            </select>
+
+            {(searchQuery || selectedAccount || selectedFolder || selectedCategory) && (
               <button
                 onClick={() => {
                   setSearchQuery('');
                   setSelectedAccount('');
                   setSelectedFolder('');
+                  setSelectedCategory('');
                   setCurrentPage(1);
                 }}
                 className="clear-filters"

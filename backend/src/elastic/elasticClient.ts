@@ -157,13 +157,14 @@ export interface SearchEmailsParams {
   query?: string;
   accountId?: string;
   folder?: string;
+  aiCategory?: string;
   from?: number;
   size?: number;
 }
 
 export async function searchEmails(params: SearchEmailsParams) {
   try {
-    const { query, accountId, folder, from = 0, size = 20 } = params;
+    const { query, accountId, folder, aiCategory, from = 0, size = 20 } = params;
 
     const must: any[] = [];
     const should: any[] = [];
@@ -185,6 +186,10 @@ export async function searchEmails(params: SearchEmailsParams) {
 
     if (folder) {
       must.push({ term: { folder } });
+    }
+
+    if (aiCategory) {
+      must.push({ term: { aiCategory } });
     }
 
     const body: any = {

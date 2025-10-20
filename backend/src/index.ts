@@ -64,7 +64,7 @@ app.get('/api/emails', async (req: Request, res: Response) => {
 
 app.get('/api/emails/search', async (req: Request, res: Response) => {
   try {
-    const { q, account, folder, page = '1', pageSize = '20' } = req.query;
+    const { q, account, folder, category, page = '1', pageSize = '20' } = req.query;
     const pageNum = parseInt(page as string) || 1;
     const size = parseInt(pageSize as string) || 20;
     const from = (pageNum - 1) * size;
@@ -73,6 +73,7 @@ app.get('/api/emails/search', async (req: Request, res: Response) => {
       query: q as string,
       accountId: account as string,
       folder: folder as string,
+      aiCategory: category as string,
       from,
       size
     });
