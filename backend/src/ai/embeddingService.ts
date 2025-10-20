@@ -27,12 +27,13 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     
     const response = await ai.models.embedContent({
       model: 'text-embedding-004',
-      content: text,
+      contents: [{ role: 'user', parts: [{ text }] }],
     });
 
-    const embedding = response.values;
+    const embedding = response.embeddings?.[0]?.values;
 
     if (!embedding || embedding.length === 0) {
+      logger.error({ response }, 'Empty or missing embeddings in response');
       throw new Error('Empty embedding returned from API');
     }
 
