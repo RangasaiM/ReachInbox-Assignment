@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Email, EmailSearchResponse } from './types/email';
-import { fetchAccounts, searchEmails } from './services/api';
+import { fetchAccounts, searchEmails, suggestReply, type SuggestedReplyResponse } from './services/api';
 import './App.css';
 
 function App() {
@@ -9,6 +9,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+  const [suggestedReply, setSuggestedReply] = useState<SuggestedReplyResponse | null>(null);
+  const [loadingReply, setLoadingReply] = useState(false);
+  const [replyError, setReplyError] = useState<string | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -101,6 +104,30 @@ function App() {
 
   const closeEmailModal = () => {
     setSelectedEmail(null);
+    setSuggestedReply(null);
+    setReplyError(null);
+  };
+
+  const handleSuggestReply = async () => {
+    if (!selectedEmail) return;
+    
+    setLoadingReply(true);
+    setReplyError(null);
+    setSuggestedReply(null);
+    
+    try {
+      const reply = await suggestReply(selectedEmail.id);
+      setSuggestedReply(reply);
+    } catch (err) {
+      setReplyError(err instanceof Error ? err.message : 'Failed to generate reply suggestion');
+    } finally {
+      setLoadingReply(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Reply copied to clipboard!');
   };
 
   return (
@@ -310,6 +337,62 @@ function App() {
                 {selectedEmail.body || 'No content available'}
               </div>
             </div>
+
+            <div className="modal-actions">
+              <button
+                className="suggest-reply-button"
+                onClick={handleSuggestReply}
+                disabled={loadingReply}
+              >
+                {loadingReply ? '✨ Generating...' : '✨ Suggest Reply'}
+              </button>
+            </div>
+
+            {replyError && (
+              <div className="reply-error">
+                <p>❌ {replyError}</p>
+              </div>
+            )}
+
+            {suggestedReply && (
+              <div className="suggested-reply-section">
+                <div className="reply-header">
+                  <h3>💡 AI-Suggested Reply</h3>
+                  <span className="confidence-badge">
+                    Confidence: {suggestedReply.confidence}
+                  </span>
+                </div>
+                
+                <div className="reply-content">
+                  <div className="reply-text">
+                    {suggestedReply.reply}
+                  </div>
+                  <button
+                    className="copy-button"
+                    onClick={() => copyToClipboard(suggestedReply.reply)}
+                  >
+                    📋 Copy Reply
+                  </button>
+                </div>
+
+                {suggestedReply.context.length > 0 && (
+                  <div className="context-section">
+                    <h4>📚 Context Used:</h4>
+                    <div className="context-items">
+                      {suggestedReply.context.map((ctx, idx) => (
+                        <div key={idx} className="context-item">
+                          <div className="context-header">
+                            <span className="context-category">{ctx.category}</span>
+                            <span className="context-relevance">{ctx.relevance}</span>
+                          </div>
+                          <p className="context-text">{ctx.text.substring(0, 150)}...</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

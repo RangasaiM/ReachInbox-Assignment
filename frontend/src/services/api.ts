@@ -38,3 +38,31 @@ export async function searchEmails(params: SearchParams): Promise<EmailSearchRes
   if (!response.ok) throw new Error('Failed to search emails');
   return response.json();
 }
+
+export interface SuggestedReplyContext {
+  text: string;
+  category: string;
+  relevance: string;
+}
+
+export interface SuggestedReplyResponse {
+  reply: string;
+  context: SuggestedReplyContext[];
+  confidence: string;
+}
+
+export async function suggestReply(emailId: string): Promise<SuggestedReplyResponse> {
+  const response = await fetch(`${API_URL}/api/emails/${emailId}/suggest-reply`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Failed to generate suggested reply' }));
+    throw new Error(error.error || error.message || 'Failed to generate suggested reply');
+  }
+  
+  return response.json();
+}
