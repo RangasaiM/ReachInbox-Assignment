@@ -1,7 +1,9 @@
-# Replit
-.history/
+# Replit files
 .replit
 replit.nix
+replit.md
+.history/
+.local/
 
 # Node/JS
 node_modules/
@@ -16,11 +18,13 @@ dist/
 backend/dist/
 frontend/dist/
 
-# Env and local
+# Environment
 .env
 .env.*
-.local/
+
+# OS
 .DS_Store
+Thumbs.db
 
 # IDE
 .vscode/
