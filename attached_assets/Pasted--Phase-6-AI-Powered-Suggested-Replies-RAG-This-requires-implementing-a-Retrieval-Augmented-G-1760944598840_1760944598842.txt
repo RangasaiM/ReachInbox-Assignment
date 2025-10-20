@@ -1,0 +1,28 @@
+## Phase 6: AI-Powered Suggested Replies (RAG)
+
+This requires implementing a Retrieval-Augmented Generation (RAG) pipeline to fetch context from a Vector Database before generating the LLM response.
+
+### 6.1 Vector Database and Embeddings Setup
+
+1. **Vector DB (Qdrant/Weaviate):** Ensure your Dockerized vector DB is running (Phase 0).
+2. **Product Data Storage:** Store your "product and outreach agenda" (e.g., meeting links, product features, common answers) as chunks of text in the vector database.
+3. **Embeddings Generation:**
+    - You need an embedding model to convert the text chunks into dense vectors. The Gemini API can be used for this (`models/embedding-001` or similar).
+    - For each piece of product data, call the embedding API, and then store the resulting vector and the original text in the vector database.
+
+### 6.2 The RAG Pipeline - Step-by-Step Flow
+
+The RAG process is an advanced feature and requires coordination between the email data, the vector database, and the LLM.
+
+1. **API Endpoint:** Create a new endpoint: `POST /api/emails/:id/suggest-reply`.
+2. **Input:** User selects an email and hits "Suggest Reply." The backend receives the full text of the original incoming email.
+3. **Retrieval Query:** The original incoming email text is sent to the **Embedding Model (Gemini API)** to be converted into a query vector.
+4. **Vector Search:** The query vector is sent to the **Vector Database (Qdrant)**.
+5. **Context Retrieval (R):** The Vector Database returns the top $K$ (e.g., $K=3$) most relevant chunks of **Product Data/Outreach Agenda** (e.g., the meeting link, the specific product pricing).
+6. **Prompt Assembly:** A final, comprehensive prompt is constructed for the LLM. This prompt *must* contain:
+    - **System Instruction:** Act as a helpful assistant that writes professional, relevant email replies.
+    - **Retrieved Context:** The text chunks retrieved from the Vector DB (Step 5).
+    - **Original Email:** The full text of the email received from the user (Step 2).
+    - **Final Instruction:** "Based ONLY on the context provided and the original email, draft a professional and helpful reply. Be concise."
+7. **Generation (G):** The combined prompt is sent to the **Generative LLM (Gemini API)**.
+8. **Output:** The LLM's response (the suggested reply) is returned to the Frontend UI.
