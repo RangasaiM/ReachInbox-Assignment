@@ -1,11 +1,16 @@
 import { Client } from "@elastic/elasticsearch";
 import pino from "pino";
+import dotenv from "dotenv";
+import path from "path";
+
+// Load environment variables first
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 const logger = pino({
   level: process.env.LOG_LEVEL || "info",
 });
 
-const ELASTICSEARCH_HOST = process.env.ELASTICSEARCH_HOST;
+const ELASTICSEARCH_HOST = process.env.ELASTICSEARCH_HOST || "http://localhost:9200";
 const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
 
 // Log the configuration for debugging

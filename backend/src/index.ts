@@ -1,11 +1,12 @@
 import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+import path from 'path';
 import pino from 'pino';
 import cors from 'cors';
 import { startImapSync } from './imap/imapClient';
 import { ensureIndex, searchEmails, getUniqueAccounts } from './elastic/elasticClient';
 
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const logger = pino({
   level: process.env.LOG_LEVEL || 'info'

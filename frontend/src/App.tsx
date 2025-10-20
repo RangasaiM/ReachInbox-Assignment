@@ -8,6 +8,7 @@ function App() {
   const [accounts, setAccounts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -52,12 +53,11 @@ function App() {
 
   useEffect(() => {
     loadEmails();
-  }, [currentPage, selectedAccount, selectedFolder]);
+  }, [currentPage, selectedAccount, selectedFolder, searchQuery]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1);
-    loadEmails();
   };
 
   const getCategoryColor = (category?: string) => {
@@ -91,6 +91,14 @@ function App() {
   const truncateText = (text: string, maxLength: number) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength) + '...';
+  };
+
+  const handleEmailClick = (email: Email) => {
+    setSelectedEmail(email);
+  };
+
+  const closeEmailModal = () => {
+    setSelectedEmail(null);
   };
 
   return (
@@ -198,11 +206,15 @@ function App() {
         {!loading && !error && emails.length > 0 && (
           <div className="email-list">
             {emails.map((email) => (
-              <div key={email.id} className="email-card">
+              <div 
+                key={email.id} 
+                className="email-card"
+                onClick={() => handleEmailClick(email)}
+              >
                 <div className="email-header">
                   <div className="email-meta">
-                    <span className="email-account">{email.accountId}</span>
-                    <span className="email-date">{formatDate(email.date)}</span>
+                    <span className="email-account">📧 {email.accountId}</span>
+                    <span className="email-date">🕒 {formatDate(email.date)}</span>
                   </div>
                   {email.aiCategory && (
                     <span className={`category-tag ${getCategoryColor(email.aiCategory)}`}>
@@ -211,9 +223,10 @@ function App() {
                   )}
                 </div>
                 <h3 className="email-subject">{email.subject || '(No Subject)'}</h3>
-                <p className="email-body">{truncateText(email.body || '', 200)}</p>
+                <p className="email-body">{truncateText(email.body || '', 150)}</p>
                 <div className="email-footer">
-                  <span className="folder-tag">{email.folder}</span>
+                  <span className="folder-tag">📁 {email.folder}</span>
+                  <span className="read-more">Click to read →</span>
                 </div>
               </div>
             ))}
@@ -242,6 +255,45 @@ function App() {
           </div>
         )}
       </div>
+
+      {selectedEmail && (
+        <div className="email-modal-overlay" onClick={closeEmailModal}>
+          <div className="email-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{selectedEmail.subject || '(No Subject)'}</h2>
+              <button className="close-button" onClick={closeEmailModal}>✕</button>
+            </div>
+            <div className="modal-meta">
+              <div className="meta-row">
+                <span className="meta-label">From:</span>
+                <span className="meta-value">{selectedEmail.accountId}</span>
+              </div>
+              <div className="meta-row">
+                <span className="meta-label">Date:</span>
+                <span className="meta-value">{formatDate(selectedEmail.date)}</span>
+              </div>
+              <div className="meta-row">
+                <span className="meta-label">Folder:</span>
+                <span className="meta-value">{selectedEmail.folder}</span>
+              </div>
+              {selectedEmail.aiCategory && (
+                <div className="meta-row">
+                  <span className="meta-label">Category:</span>
+                  <span className={`category-tag ${getCategoryColor(selectedEmail.aiCategory)}`}>
+                    {selectedEmail.aiCategory}
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="modal-body">
+              <h3>Email Content</h3>
+              <div className="email-content">
+                {selectedEmail.body || 'No content available'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
