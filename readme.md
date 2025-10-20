@@ -1,3 +1,92 @@
+# InboxSync – Full Stack (Backend + Frontend)
+
+## Quick Start (Docker)
+
+1. Prereqs: Docker Desktop running
+2. Project root: `C:\Users\Ranga Sai\OneDrive\Desktop\InboxSync`
+3. Configure env (backend reads `backend/.env`; compose mounts it):
+
+```
+# backend/.env
+PORT=3000
+IMAP_EMAIL_1=your_email_1@gmail.com
+IMAP_PASS_1=your_app_password_1
+IMAP_EMAIL_2=your_email_2@gmail.com
+IMAP_PASS_2=your_app_password_2
+
+# Elasticsearch Cloud
+ELASTICSEARCH_HOST=https://<your-elastic-host>:443
+ELASTIC_API_KEY=<your_elastic_api_key>
+
+# Gemini
+GEMINI_API_KEY=<your_gemini_api_key>
+
+# Optional
+SLACK_WEBHOOK_URL=
+WEBHOOK_SITE_URL=
+
+# (RAG optional)
+QDRANT_URL=
+QDRANT_API_KEY=
+```
+
+4. Build & Run
+
+```bash
+docker compose up -d --build
+# or bring services separately
+docker compose up -d --build backend
+docker compose up -d --build frontend
+```
+
+5. Verify
+
+```bash
+# Containers
+docker compose ps
+
+# Backend health
+curl http://localhost:3000/health
+
+# Frontend
+# open http://localhost (use http://localhost:8080 if you remap ports)
+```
+
+Notes
+- Images are named `inboxsync/backend:latest` and `inboxsync/frontend:latest` and appear in Docker Desktop.
+- If port 80 is busy, change frontend mapping in `docker-compose.yml` to `"8080:80"`.
+
+## Environment Variables (Summary)
+
+- IMAP: `IMAP_EMAIL_1`, `IMAP_PASS_1`, `IMAP_EMAIL_2`, `IMAP_PASS_2`
+- Elasticsearch: `ELASTICSEARCH_HOST`, `ELASTIC_API_KEY`
+- Gemini: `GEMINI_API_KEY`
+- Optional: `SLACK_WEBHOOK_URL`, `WEBHOOK_SITE_URL`
+- RAG optional: `QDRANT_URL`, `QDRANT_API_KEY`
+
+## Dependencies
+
+- Backend: Node 20, Express, TypeScript, `node-imap`, `mailparser`, `@elastic/elasticsearch`, `@google/genai`, `pino`, optional `@qdrant/js-client-rest`
+- Frontend: React + Vite (served via Nginx in Docker)
+
+## Architecture (High-level)
+
+- IMAP Sync (IDLE) in `backend/src/imap/imapClient.ts` for real-time delivery
+- Indexing & Search in `backend/src/elastic/elasticClient.ts` (index: `emails`)
+- AI Categorization in `backend/src/ai/emailCategorizer.ts` (5 labels)
+- Suggested Reply (RAG, optional) with Qdrant vector DB
+- REST API routes in `backend/src/routes/api.ts`
+- Frontend React app calls backend via `/api/*`
+
+## Feature Implementation Breakdown
+
+- Real-time Email Sync: IMAP IDLE, initial 30‑day backfill, unseen fetch on notifications, 29‑min reconnect
+- Search: full‑text `multi_match` over `subject` and `body` + filters on `accountId`, `folder`, `aiCategory`; sort by `date desc`
+- AI Categorization: Gemini 2.5 Flash with strict JSON schema and tuned prompt; exponential backoff on failure
+- Suggested Reply (RAG): retrieve top knowledge chunks from Qdrant, ground the prompt, generate reply; returns reply + context + confidence
+- Webhooks (optional): trigger on "Interested" leads to Slack and a generic webhook
+
+---
 # ReachInbox Onebox Backend
 
 ## Overview

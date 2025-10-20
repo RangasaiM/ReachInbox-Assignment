@@ -1,0 +1,29 @@
+services:
+  backend:
+    image: inboxsync/backend:latest
+    build: ./backend
+    container_name: inboxsync-backend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - inboxsync-network
+
+  frontend:
+    image: inboxsync/frontend:latest
+    build: ./frontend
+    container_name: inboxsync-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - inboxsync-network
+
+networks:
+  inboxsync-network:
+    driver: bridge
+

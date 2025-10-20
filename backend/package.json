@@ -19,6 +19,7 @@
   "dependencies": {
     "@elastic/elasticsearch": "^8.10.0",
     "@google/genai": "^1.25.0",
+    "@qdrant/js-client-rest": "^1.15.1",
     "@types/cors": "^2.8.19",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",

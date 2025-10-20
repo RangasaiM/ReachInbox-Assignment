@@ -33,7 +33,7 @@ export async function ensureCollection(): Promise<void> {
   try {
     const collections = await client.getCollections();
     const collectionExists = collections.collections.some(
-      (col) => col.name === COLLECTION_NAME
+      (col: { name: string }) => col.name === COLLECTION_NAME
     );
 
     if (!collectionExists) {
