@@ -7,7 +7,7 @@ import pino from 'pino';
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const router = express.Router();
 
-router.post('/emails/:id/suggest-reply', async (req: Request, res: Response) => {
+router.post('/emails/:id/suggest-reply', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
 
@@ -17,7 +17,8 @@ router.post('/emails/:id/suggest-reply', async (req: Request, res: Response) => 
     });
 
     if (!emailDoc.found) {
-      return res.status(404).json({ error: 'Email not found' });
+      res.status(404).json({ error: 'Email not found' });
+      return;
     }
 
     const email: any = emailDoc._source;
@@ -52,12 +53,13 @@ router.post('/emails/:id/suggest-reply', async (req: Request, res: Response) => 
   }
 });
 
-router.post('/product-data', async (req: Request, res: Response) => {
+router.post('/product-data', async (req: Request, res: Response): Promise<void> => {
   try {
     const { text, category, metadata } = req.body;
 
     if (!text || !category) {
-      return res.status(400).json({ error: 'text and category are required' });
+      res.status(400).json({ error: 'text and category are required' });
+      return;
     }
 
     const id = `product-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -80,12 +82,13 @@ router.post('/product-data', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/product-data/batch', async (req: Request, res: Response) => {
+router.post('/product-data/batch', async (req: Request, res: Response): Promise<void> => {
   try {
     const { items } = req.body;
 
     if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'items array is required' });
+      res.status(400).json({ error: 'items array is required' });
+      return;
     }
 
     const dataList = items.map((item, index) => ({
@@ -108,7 +111,7 @@ router.post('/product-data/batch', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/product-data', async (_req: Request, res: Response) => {
+router.get('/product-data', async (_req: Request, res: Response): Promise<void> => {
   try {
     const data = await getAllProductData();
     res.json({ data });
@@ -121,7 +124,7 @@ router.get('/product-data', async (_req: Request, res: Response) => {
   }
 });
 
-router.delete('/product-data/:id', async (req: Request, res: Response) => {
+router.delete('/product-data/:id', async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     await deleteProductData(id);

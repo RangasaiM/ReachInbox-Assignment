@@ -47,12 +47,20 @@ async function generateReplyWithRetry(
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.0-flash-exp',
-        contents: prompt,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
       });
 
-      const text = response.text;
+      let text: string | undefined;
+      
+      if (response.candidates && response.candidates.length > 0) {
+        const candidate = response.candidates[0];
+        if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
+          text = candidate.content.parts[0].text;
+        }
+      }
 
       if (!text || text.trim().length === 0) {
+        logger.error({ response }, 'Empty or invalid response from Gemini API');
         throw new Error('Empty response from Gemini API');
       }
 
