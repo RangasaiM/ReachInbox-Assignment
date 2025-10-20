@@ -8,6 +8,16 @@ const logger = pino({
 const ELASTICSEARCH_HOST = process.env.ELASTICSEARCH_HOST || 'http://localhost:9200';
 const ELASTIC_API_KEY = process.env.ELASTIC_API_KEY;
 
+// Log the configuration for debugging
+console.log('🔍 Elasticsearch Configuration:');
+console.log('ELASTICSEARCH_HOST:', ELASTICSEARCH_HOST);
+console.log('ELASTIC_API_KEY exists:', !!ELASTIC_API_KEY);
+
+logger.info({
+  ELASTICSEARCH_HOST,
+  ELASTIC_API_KEY_SET: !!ELASTIC_API_KEY
+}, 'Elasticsearch configuration loaded');
+
 export const esClient = new Client({
   node: ELASTICSEARCH_HOST,
   auth: ELASTIC_API_KEY
