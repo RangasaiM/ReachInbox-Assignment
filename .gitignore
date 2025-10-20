@@ -1,0 +1,27 @@
+# Replit
+.history/
+.replit
+replit.nix
+
+# Node/JS
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Builds
+dist/
+backend/dist/
+frontend/dist/
+
+# Env and local
+.env
+.env.*
+.local/
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
